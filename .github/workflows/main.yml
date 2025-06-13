@@ -36,7 +36,8 @@ jobs:
         run: |
           conda activate mlflow-env
           cd MLProject/
-          mlflow run. -e main
+          mlflow run . -e main
+
           
           SERVING_RUN_ID=$(cat serving_run_id.txt) 
           
