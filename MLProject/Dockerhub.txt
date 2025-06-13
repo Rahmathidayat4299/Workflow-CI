@@ -1,0 +1,1 @@
+https://hub.docker.com/r/dayat04/graduate_indicator_ml_model_serving
