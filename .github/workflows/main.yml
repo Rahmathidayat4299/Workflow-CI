@@ -16,6 +16,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --- DEBUGGING STEP: VERIFIKASI KEBERADAAN FILE ---
+      # Langkah ini akan mencetak isi direktori dan memverifikasi apakah conda.yaml ada
+      # Ini akan membantu memastikan apakah file tersebut memang tidak ditemukan oleh runner
+      - name: Debug: List files in MLProject directory
+        shell: bash
+        run: |
+          echo "Current working directory:"
+          pwd
+          echo "Listing contents of the root repository directory:"
+          ls -F.
+          echo "Listing contents of the MLProject directory:"
+          ls -F MLProject/
+          echo "Verifying if MLProject/conda.yaml exists:"
+          if [ -f MLProject/conda.yaml ]; then
+            echo "SUCCESS: MLProject/conda.yaml found!"
+            echo "Content of MLProject/conda.yaml:"
+            cat MLProject/conda.yaml
+          else
+            echo "ERROR: MLProject/conda.yaml NOT found!"
+          fi
+          echo "--- End Debugging ---"
+      # --- AKHIR DEBUGGING STEP ---
+
       - name: Set up Conda environment
         uses: conda-incubator/setup-miniconda@v3
         with:
@@ -23,6 +46,9 @@ jobs:
           python-version: 3.12.7
           activate-environment: mlflow-env
           environment-file: MLProject/conda.yaml
+          # Menambahkan ini secara eksplisit (meskipun default)
+          clean-patched-environment-file: true 
+          run-post: true
 
       - name: Install MLflow and other dependencies
         shell: bash -l {0}
@@ -36,9 +62,14 @@ jobs:
         run: |
           conda activate mlflow-env
           cd MLProject/
-          mlflow run . -e main
+          mlflow run. -e main
           
-          SERVING_RUN_ID=$(cat serving_run_id.txt) 
+          # Pastikan serving_run_id.txt dibuat oleh MLflow run
+          if [ ! -f serving_run_id.txt ]; then
+            echo "Error: serving_run_id.txt not found. Check MLProject main entry point script."
+            exit 1
+          fi
+          SERVING_RUN_ID=$(cat serving_run_id.txt)
           
           echo "SERVING_RUN_ID=$SERVING_RUN_ID" >> "$GITHUB_OUTPUT"
 
@@ -62,13 +93,14 @@ jobs:
           SERVING_RUN_ID="${{ steps.run_mlflow_project.outputs.SERVING_RUN_ID }}"
           
           if [ -z "$SERVING_RUN_ID" ]; then
-            echo "Error: SERVING_RUN_ID not found from previous step. Cannot build Docker image for serving."
+            echo "Error: SERVING_RUN_ID was not found in the previous step. Cannot build Docker image for serving."
             exit 1
           fi
 
           IMAGE_NAME="dayatio/graduate_indicator_ml_model_serving:latest"
           
-          MLFLOW_MODEL_URI="runs:/$SERVING_RUN_ID/serving_model" 
+          # MLFLOW_MODEL_URI menggunakan artifact_path 'serving_model' yang diasumsikan ada
+          MLFLOW_MODEL_URI="runs:/$SERVING_RUN_ID/serving_model"
           
           mlflow models build-docker -m "$MLFLOW_MODEL_URI" -n "$IMAGE_NAME"
           
