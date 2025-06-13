@@ -66,7 +66,7 @@ jobs:
             exit 1
           fi
 
-          IMAGE_NAME="patuhio/diabetes_ml_model_serving:latest"
+          IMAGE_NAME="dayatio/graduate_indicator_ml_model_serving:latest"
           
           MLFLOW_MODEL_URI="runs:/$SERVING_RUN_ID/serving_model" 
           
